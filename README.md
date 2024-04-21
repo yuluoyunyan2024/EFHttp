@@ -56,4 +56,4 @@ EFHttp.defaultConfig.responseInterceptors.push(你的响应拦截器)
 
 ## 吐槽
 
-喵的我真的服了，本来库名叫做 ESHttp，但是发布的时候发现被占了（第一次发布），被迫改名儿，嘤嘤嘤~
+喵的我真的服了，本来库名叫做 ESHttp，但是在NPM上发布的时候发现被占了（第一次发布），被迫改名儿，嘤嘤嘤~
