@@ -1,0 +1,14 @@
+{
+  "name": "efhttp",
+  "version": "0.0.8",
+  "description": "一个肥肠简单的HTTP请求库！",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "EFHttp"
+  ],
+  "author": "w雨落云烟w",
+  "license": "ISC"
+}
