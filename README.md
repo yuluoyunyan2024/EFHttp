@@ -21,18 +21,18 @@ npm i efhttp
 
 ```
 // 仅url亦可发送请求
-EFHttp.get({url:"https://www.baidu.com"})
+EFHttp.get({url:"https://www.example.com"})
 
 
 // get请求完整配置
 EFHttp.get({
-    url: "https://www.baidu.com",
+    url: "https://www.example.com",
     header:{}
 })
 
 // post请求完整配置，put、delete同理
 EFHttp.post({
-    url: "https://www.baidu.com",
+    url: "https://www.example.com",
     header:{},
     body:{}
 })
