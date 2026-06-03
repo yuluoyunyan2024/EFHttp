@@ -151,7 +151,7 @@ export default class EFHttp {
    * 启动请求拦截器前，读取默认配置
    * @param {Object} options 请求参数
    */
-  static #readDefaultConfig(options) {
+  static #useDefaultConfig(options) {
     if (EFHttp.#defaultConf.baseUrl.length !== 0) {
       options.url = `${EFHttp.#defaultConf.baseUrl}${options.url}`;
     }
@@ -183,7 +183,7 @@ export default class EFHttp {
    * @returns promise
    */
   static #doHttp(options) {
-    EFHttp.#readDefaultConfig(options);
+    EFHttp.#useDefaultConfig(options);
 
     EFHttp.#executeInterceptors("requestInterceptors", options);
 
