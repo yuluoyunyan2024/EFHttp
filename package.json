@@ -1,7 +1,7 @@
 {
   "name": "efhttp",
   "version": "0.0.8",
-  "description": "一个仅支持浏览器环境的简易的HTTP请求库！",
+  "description": "持浏览器环境下的轻量级HTTP请求库",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

@@ -1,15 +1,13 @@
 ## EFHttp
 
-一个简单的 Http 请求库！(>_<)
+esay for http ( ^_^ )
 
-## 声明
-
-- 仅支持 GET、POST、PUT、DELETE 请求，返回的是 promise 对象
-- GET 请求的方法没有请求体哦！
-- 支持请求的默认配置
-- 支持请求&响应拦截
-- 暂未测试nodejs环境！
-- 本库由原生JS编写，不依赖任何第三方库
+- 在 fetch 的基础上做加法
+- 简单易用且JSDoc充足
+- 拦截器协助实现关注点分离
+- 超轻量级利好低端边缘网络
+- 不支持进度条！
+- 仅浏览器环境可用！
 
 ## 安装
 
@@ -17,39 +15,58 @@
 npm i efhttp
 ```
 
-## 使用
+## 基础使用
 
+```javascript
+// 最简请求
+const res = await request("https://example.com");
+
+// 若配置了baseUrl="https://example.com"
+const res = await request("note");  // https://example.com/note
+
+// 查询参数（用于构建查询参数，若url字符串中包含“?”则忽略此项。）
+const res = await request("https://example.com/note",{ params: { page:5, pageSize:20}})  // https://example.com/note?page=5&pageSize=20
+
+// 完整请求（参数在fetch的基础上扩展）
+const res = await request(url, {
+    attributionReporting,
+    body,
+    browsingTopics,
+    cache,
+    credentials,
+    duplex,
+    headers,
+    integrity,
+    keepalive,
+    method,
+    mode,
+    priority,
+    privateToken,
+    redirect,
+    referrer,
+    referrerPolicy,
+    signal,
+    params  // 扩展参数
+});
 ```
-// 仅url亦可发送请求
-EFHttp.get({url:"https://www.example.com"})
 
+## 全局配置
 
-// get请求完整配置
-EFHttp.get({
-    url: "https://www.example.com",
-    header:{}
-})
+```javascript
+// 配置基础url
+request.globalConfig.baseUrl = "http://demo.com";
 
-// post请求完整配置，put、delete同理
-EFHttp.post({
-    url: "https://www.example.com",
-    header:{},
-    body:{}
-})
+// 配置请求头（调用时传递的同名key优先级更高）
+request.globalConfig.headers.append("Authorization", "token");
 
-// 默认配置属性
-EFHttp.defaultConfig：{
-    baseURL: "",                    // 设置默认请求前缀
-    header: {},                     // 设置默认请求头
-    isEncapsulationResponse: true,  // 是否使用默认配置封装响应信息（设置为false就得您老自己处理咯）
-    requestInterceptors: [],        // 请求拦截器，这是数组嗷！执行顺序是数组头部到尾部的顺序
-    responseInterceptors: []        // 响应拦截器，同上
-}
+// 配置超时取消发送（单位是毫秒）
+request.globalConfig.timeout = 2000;
 
+// 添加拦截器（先添加先调用）
+request.globalConfig.requestInterceptor.add(interceptorName1,fulfilledHandler1, rejectedHandler1 )
+    .add(interceptorName2,fulfilledHandler2, rejectedHandler2 )
+    .add(interceptorName3,fulfilledHandler3);
 
-// 请求拦截器，拦截器函数可接收请求对象作为参数，包括mehtod、url、header、body
-EFHttp.defaultConfig.requestInterceptors.push(你的请求拦截器)
-
-// 请求拦截器，拦截器函数可接收请求对象作为参数，包括mehtod、url、header、body
-EFHttp.defaultConfig.responseInterceptors.push(你的响应拦截器)
+// 移除拦截器
+request.globalConfig.responseInterceptor.remove(interceptorName1).remove(interceptorName2);
 ```

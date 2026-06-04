@@ -1,237 +1,162 @@
 /**
- * 用于生成固定格式的响应对象
- * @class Response
- * @param {Object} options
- * @param {Number} options.status 响应状态码
- * @param {String} options.header 响应头
- * @param {Object|String} options.data 响应数据
+ * 全局配置，优先级小于使用时传递的同名参数
+ * @type {{baseUrl: string, headers: Headers, requestInterceptor: InterceptorManager, responseInterceptor: InterceptorManager, timeout: number}}
  */
-class Response {
-  constructor(options) {
-    this.status = options.status;
-
-    let headerPairs = options.header.trim().split("\n");
-    let headerObj = {};
-    for (let i = 0; i < headerPairs.length; i++) {
-      let headerPair = headerPairs[i].replace(/\r/g, "").split(": ");
-      let headerName = headerPair[0];
-      let headerValue = headerPair[1];
-      headerObj[headerName] = headerValue;
-    }
-    this.header = headerObj;
-
-    this.data = JSON.parse(options.data);
-  }
-}
-
-export default class EFHttp {
-  constructor() {
-    throw new Error(`ESHttp为静态类！`);
-  }
-  /**
-   * 发送GET请求
-   * @param {*} options
-   * @param {String} options.url 请求地址
-   * @param {Object} options.header 请求头
-   * @returns promise
-   */
-  static get(options) {
-    return EFHttp.#doHttp({
-      method: "get",
-      url: options.url,
-      header: options.header,
-    });
-  }
-  /**
-   * 发送POST请求
-   * @param {*} options
-   * @param {String} options.url 请求地址
-   * @param {Object} options.header 请求头
-   * @param {Object} options.body 请求体
-   * @returns promise
-   */
-  static post(options) {
-    return EFHttp.#doHttp({
-      method: "post",
-      url: options.url,
-      header: options.header,
-      body: options.body,
-    });
-  }
-  /**
-   * 发送PUT请求
-   * @param {*} options
-   * @param {String} options.url 请求地址
-   * @param {Object} options.header 请求头
-   * @param {Object} options.body 请求体
-   * @returns promise
-   */
-  static put(options) {
-    return EFHttp.#doHttp({
-      method: "put",
-      url: options.url,
-      header: options.header,
-      body: options.body,
-    });
-  }
-  /**
-   * 发送DELETE请求
-   * @param {*} options
-   * @param {String} options.url 请求地址
-   * @param {Object} options.header 请求头
-   * @param {Object} options.body 请求体
-   * @returns promise
-   */
-  static delete(options) {
-    return EFHttp.#doHttp({
-      method: "delete",
-      url: options.url,
-      header: options.header,
-      body: options.body,
-    });
-  }
-  /**
-   * 默认配置
-   * @type {Object}
-   * @property {String} baseUrl 基础URL
-   * @property {Object} header 请求头
-   * @property {Boolean} isEncapsulationResponse 是否对响应数据进行封装
-   * @property {Array} requestInterceptors 请求拦截器数组
-   * @property {Array} responseInterceptors 响应拦截器数组
-   */
-  static #defaultConf = {
+const globalConfig = {
     baseUrl: "",
-    header: {},
-    isEncapsulationResponse: true,
-    requestInterceptors: [],
-    responseInterceptors: [],
-  };
-  /**
-   * 默认配置代理
-   * @param {Object} config 配置对象
-   */
-  static defaultConfig = new Proxy(EFHttp.#defaultConf, {
-    // 拦截设置属性操作
-    set(target, prop, value) {
-      console.log("asdasd");
-      let defaultConfigTypeMap = {
-        baseUrl: "String",
-        header: "Object",
-        isEncapsulationResponse: "Boolean",
-        requestInterceptors: "Array",
-        responseInterceptors: "Array",
-      };
-      // 限制修改defaultConfig的子属性
-      if (prop in target) {
-        if (
-          Object.prototype.toString.call(value).slice(8, -1) !==
-          defaultConfigTypeMap[prop]
-        ) {
-          throw new Error(
-            `\n\n\t${prop}是${defaultConfigTypeMap[prop]}类型的哦~\n`
-          );
-        }
-        target[prop] = value;
-        return true;
-        // return Reflect.set(target, prop, value);
-      } else {
-        throw new Error(`\n\n您仅可对EFHttp.defaultConfig已有的子属性进行操作： \n\n${Object.keys(
-          EFHttp.#defaultConf
-        )
-          .map((key) => {
-            return "- " + key;
-          })
-          .join("\n")}
-        `);
-      }
-    },
-  });
+    headers: new Headers(),
+    requestInterceptor: new InterceptorManager(),
+    responseInterceptor: new InterceptorManager(),
+    timeout: 2000, // 毫秒
+};
 
-  /**
-   * 启动请求拦截器前，读取默认配置
-   * @param {Object} options 请求参数
-   */
-  static #useDefaultConfig(options) {
-    if (EFHttp.#defaultConf.baseUrl.length !== 0) {
-      options.url = `${EFHttp.#defaultConf.baseUrl}${options.url}`;
+class InterceptorManager {
+    /**
+     *
+     * @type {[]}
+     */
+    #interceptors = [];
+
+    /**
+     * 添加拦截器
+     * @param {Function} fulfilledHandler - 成功回调，接收当前值，返回新值或 Promise
+     * @param {Function|undefined} [rejectedHandler] - 失败回调，
+     * @param {string} [name] - 拦截器唯一名称
+     * @returns {Function} 移除该拦截器的函数
+     */
+    add(fulfilledHandler, rejectedHandler, name) {
+        if (typeof fulfilledHandler !== 'function') {
+            throw new Error('fulfilledHandler类型是Function');
+        }
+        if (rejectedHandler !== undefined && typeof rejectedHandler !== 'function') {
+            throw new Error('rejectedHandler类型是Function|undefined');
+        }
+        if (name !== undefined && this.#interceptors.some(i => i.name === name)) {
+            throw new Error(`拦截器名称已存在`);
+        }
+
+        /**
+         *
+         * @type {{name: string, fulfilledHandler: Function, rejectedHandler: Function}}
+         */
+        const interceptor = {name, fulfilledHandler, rejectedHandler};
+        this.#interceptors.push(interceptor);
     }
-    if (Object.keys(EFHttp.#defaultConf.header).length !== 0) {
-      options.header = {
-        ...EFHttp.#defaultConf.header,
-        ...options.header,
-      };
+
+    /**
+     * 删除拦截器
+     * @param {string} interceptorName 拦截器名称
+     * @returns {InterceptorManager} 是否成功删除
+     */
+    remove(interceptorName) {
+        let index = this.#interceptors.findIndex(i => i.name === interceptorName);
+        if (index !== -1) {
+            this.#interceptors.splice(index, 1);
+        }
+        return this;
     }
-  }
-  /**
-   * 执行请求/响应拦截器
-   * @param {String} interceptorsType 拦截器类型
-   * @param {Object} options 请求参数
-   */
-  static #executeInterceptors(interceptorsType, options) {
-    let InterceptorArr = EFHttp.#defaultConf[interceptorsType];
-    if (InterceptorArr.length !== 0) {
-      for (let key in InterceptorArr) {
-        if (typeof InterceptorArr[key] === "function") {
-          InterceptorArr[key](options);
-        }
-      }
+
+    /**
+     * 清空所有拦截器
+     */
+    clear() {
+        this.#interceptors = [];
     }
-  }
-  /**
-   * 发送HTTP请求
-   * @param {Object} options 请求参数
-   * @returns promise
-   */
-  static #doHttp(options) {
-    EFHttp.#useDefaultConfig(options);
 
-    EFHttp.#executeInterceptors("requestInterceptors", options);
-
-    return new Promise((resolve, reject) => {
-      let xhr = new XMLHttpRequest();
-
-      let { method, url, header, body } = options;
-
-      xhr.open(method, url, true);
-
-      if (header) {
-        for (let key in header) {
-          xhr.setRequestHeader(key, header[key]);
+    /**
+     * 执行拦截器链
+     * @param {any} initialValue - 初始值
+     * @returns {Promise<any>} 最终值
+     */
+    async run(initialValue) {
+        let value = initialValue;
+        for (const {fulfilledHandler, rejectedHandler} of this.#interceptors) {
+            try {
+                value = await fulfilledHandler(value);
+            } catch (error) {
+                if (rejectedHandler) {
+                    value = await rejectedHandler(error);
+                } else {
+                    throw error;
+                }
+            }
         }
-      }
+        return value;
+    }
 
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          let response;
-
-          if (EFHttp.#defaultConf.isEncapsulationResponse) {
-            response = new Response({
-              status: xhr.status,
-              header: xhr.getAllResponseHeaders(),
-              data: xhr.response,
-            });
-          }
-
-          EFHttp.#executeInterceptors("responseInterceptors", response);
-
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(response);
-          } else {
-            reject(response);
-          }
-        }
-      };
-
-      if (method === "get") {
-        xhr.send();
-      } else {
-        xhr.send(body);
-      }
-    });
-  }
+    /**
+     * 调试：打印当前拦截器列表
+     */
+    log() {
+        console.log(this.#interceptors);
+    }
 }
 
-// 冻结EFHttp静态类
-Object.freeze(EFHttp);
-// 密封EFHttp.defaultConfig属性
-Object.seal(EFHttp.defaultConfig);
+/**
+ * 发送请求
+ * @param {string|URL} url - 请求地址（绝对或相对）
+ * @param {Object} options - fetch的参数及扩展参数，详见README
+ * @returns {Promise<any>} 响应拦截器处理后的数据
+ */
+export default async function request(url, options) {
+    // 防止被new
+    if (new.target) {
+        throw new Error('request is not a constructor');
+    }
+
+    // 配置合并
+    const currentConfig = {
+        url,
+        ...options
+    };
+
+    // 应用默认配置baseUrl
+    if (globalConfig.baseUrl) {
+        if (!currentConfig.url.startsWith('http://') && !currentConfig.url.startsWith('https://')) {
+            currentConfig.url = new URL(currentConfig.url, globalConfig.baseUrl).href;
+        }
+    }
+    // 拼接查询参数
+    if (!currentConfig.url.includes("?") && currentConfig.params) {
+        let searchParams = new URLSearchParams(currentConfig.params);
+        currentConfig.url = currentConfig.url.concat("?" + searchParams);
+    }
+
+
+    // 应用默认配置headers
+    currentConfig.headers = new Headers(currentConfig.headers);
+    globalConfig.headers.forEach((value, key) => {
+        if (!currentConfig.headers.has(key)) {
+            currentConfig.headers.set(key, value);
+        }
+    });
+
+    // 执行请求拦截器链
+    await globalConfig.requestInterceptor.run(currentConfig);
+
+    // 超时取消
+    const controller = new AbortController();
+    currentConfig.signal = controller.signal;
+    const timeoutId = setTimeout(() => controller.abort(), globalConfig.timeout);
+
+    let response;
+    try {
+        response = await fetch(currentConfig.url, currentConfig);
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+    } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+    }
+
+    // 执行响应拦截器链
+    return await globalConfig.responseInterceptor.run(response);
+}
+
+// 挂载全局配置属性
+request.globalConfig = globalConfig;
+// 防止外部增减属性
+Object.freeze(request);
