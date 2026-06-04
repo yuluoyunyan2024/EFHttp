@@ -1,14 +1,13 @@
 {
   "name": "efhttp",
-  "version": "0.0.8",
-  "description": "持浏览器环境下的轻量级HTTP请求库",
+  "version": "0.1.6",
+  "description": "浏览器环境下的轻量级HTTP请求库",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [
     "EFHttp",
-    "efhttp"
+    "efhttp",
+    "http",
+    "lightweight http"
   ],
   "author": "w雨落云烟w",
   "license": "ISC"
